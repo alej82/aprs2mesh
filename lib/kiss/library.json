@@ -1,0 +1,8 @@
+{
+  "name": "kiss",
+  "version": "0.1.0",
+  "description": "KISS framing, AX.25/TNC2 codec and client hub (portable, no Arduino)",
+  "build": {
+    "flags": ["-Wall", "-Wextra", "-Wshadow", "-Wconversion"]
+  }
+}

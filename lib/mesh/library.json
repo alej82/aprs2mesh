@@ -1,0 +1,8 @@
+{
+  "name": "mesh",
+  "version": "0.1.0",
+  "description": "Meshtastic wire format: protobuf subset, channel hash, header and AES-CTR",
+  "build": {
+    "flags": ["-Wall", "-Wextra", "-Wshadow", "-Wconversion"]
+  }
+}

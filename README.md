@@ -14,8 +14,8 @@ The plan lives in `openspec/changes/add-kiss-mesh-gateway/`.
 | KISS codec (FEND/FESC, resync, size limits, frame classes) | implemented, host-tested |
 | AX.25 ↔ TNC2 (addresses, SSID, path, UI/PID) | implemented, host-tested |
 | KISS hub (per-client decoders, broadcast, failed-client eviction) | implemented, host-tested |
-| TCP KISS server (`:8001`) | implemented, not yet run on hardware |
-| Bluetooth SPP transport | implemented, not yet run on hardware |
+| TCP KISS server (`:8001`) | implemented, compiles for T-Beam, not run on hardware |
+| Bluetooth SPP transport | implemented, compiles for T-Beam, not run on hardware |
 | Mesh wire format: protobuf `MeshPacket`/`Data`/`User`, 16-byte header, channel hash, PSK expansion | implemented, host-tested against NIST/firmware vectors |
 | AES-CTR payload crypto (AES-128/256, nonce from packet id + node) | implemented, host-tested against NIST vectors |
 | Mesh radio (RadioLib, presets, region) | pending |
@@ -49,6 +49,11 @@ pio run -e tbeam
 pio run -e tbeam -t upload
 pio device monitor -e tbeam
 ```
+
+The image is about 1.6 MB, which does not fit the default 1.31 MB app slot
+once Bluedroid and WiFi are both linked. The build uses `huge_app.csv`
+(single 3 MB app partition, no OTA). Enable OTA later only with a custom
+partition table that accounts for the size.
 
 ## Bench check without radio
 

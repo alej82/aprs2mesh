@@ -15,8 +15,8 @@
 - [x] 2.4 Implementar el parser AX.25 → TNC2 con validación de longitudes y separación de origen, destino, path e información
 - [x] 2.5 Implementar el constructor TNC2 → AX.25 UI con control `0x03`, PID `0xF0` y direcciones desplazadas
 - [x] 2.6 Escribir pruebas de ida y vuelta AX.25 ↔ TNC2 y casos malformados
-- [ ] 2.7 Conectar el transporte SPP real al codec, reemplazando el eco de prueba
-- [ ] 2.8 Conectar el transporte TCP real con varios clientes y escritura serializada
+- [x] 2.7 Conectar el transporte SPP real al codec, reemplazando el eco de prueba
+- [x] 2.8 Conectar el transporte TCP real con varios clientes y escritura serializada
 - [ ] 2.9 Validar la capa completa con Direwolf: enviar y recibir una trama por KISS TCP sin radio
 
 ## 3. Enlace de malla
