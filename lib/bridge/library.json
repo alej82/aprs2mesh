@@ -4,6 +4,9 @@
   "description": "KISS <-> mesh text pipeline: uplink, downlink, dedupe and airtime queue",
   "dependencies": [
     {
+      "name": "aprs"
+    },
+    {
       "name": "kiss"
     },
     {

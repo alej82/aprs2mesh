@@ -1,7 +1,12 @@
 {
   "name": "kiss",
   "version": "0.1.0",
-  "description": "KISS framing, AX.25/TNC2 codec and client hub (portable, no Arduino)",
+  "description": "KISS client hub: per-client decoding and broadcast fan-out (portable, no Arduino)",
+  "dependencies": [
+    {
+      "name": "aprs"
+    }
+  ],
   "build": {
     "flags": ["-Wall", "-Wextra", "-Wshadow", "-Wconversion"]
   }
