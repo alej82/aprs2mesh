@@ -54,15 +54,15 @@ El equipo SHALL almacenar la configuración en memoria no volátil de forma ató
 
 ### Requirement: Modos de arranque
 
-El equipo SHALL arrancar en modo operación cuando exista una configuración válida y SHALL arrancar en modo portal cuando no la haya o cuando el operador mantenga pulsado el botón durante el arranque.
+El equipo SHALL arrancar en modo operación cuando exista una configuración válida y SHALL arrancar en modo portal cuando no la haya o cuando el operador mantenga pulsado el botón del equipo durante unos segundos.
 
 #### Scenario: Primer arranque
 - **WHEN** el equipo se enciende sin configuración válida
 - **THEN** arranca en modo portal, no abre sesión APRS-IS y no transmite por la malla
 
 #### Scenario: Entrada manual al portal
-- **WHEN** el operador mantiene pulsado el botón durante el arranque
-- **THEN** el equipo arranca en modo portal aunque tenga configuración válida
+- **WHEN** el operador mantiene pulsado el botón del equipo durante tres segundos en modo operación
+- **THEN** el equipo reinicia en modo portal aunque tenga configuración válida
 
 ### Requirement: Interruptor del gate en caliente
 

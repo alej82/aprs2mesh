@@ -71,14 +71,14 @@ El gateway no tiene SPP que proteger, así que WiFi y LoRa conviven sin el turna
 ### D9 · Reorganización de librerías compartidas
 
 ```
-lib/aprs/    ax25, TNC2          (nuevo, extraído de lib/kiss)
-lib/kiss/    codec, hub          (solo tracker)
+lib/aprs/    ax25, TNC2 y framing KISS (nuevo, extraído de lib/kiss)
+lib/kiss/    hub de clientes KISS      (solo tracker)
 lib/mesh/    proto, cifrado, frame, dedupe, cola de TX
 src/         main del tracker
 src/gateway/ main del gateway, cliente APRS-IS, flujos, admisión, monitor
 ```
 
-El tracker se actualiza para incluir `lib/aprs`; el gateway enlaza `lib/aprs` y `lib/mesh` pero no `lib/kiss`.
+El tracker se actualiza para incluir `lib/aprs`; el gateway enlaza `lib/aprs`, `lib/mesh` y `lib/gateway` pero no `lib/kiss`. El codec KISS se movió con AX.25 porque el monitor también lo necesita para entregar tramas a sus clientes; el hub sí es exclusivo del tracker.
 
 ### D10 · Tres contadores como diagnóstico de primera clase
 
@@ -87,6 +87,10 @@ Un gateway tiene dos formas de no entregar nada: que el filtro no traiga paquete
 ### D11 · Identidad del gateway en la malla
 
 `long_name` igual al callsign del gateway (con SSID distinto al del tracker, por ejemplo `-10`), rol `CLIENT_MUTE`, `hop_limit` 3 y NodeInfo periódico. No reemite tráfico ajeno. El callsign es también el de la línea de login y el del construct `qAR`.
+
+### D12 · Entrada manual al portal con pulsación larga
+
+GPIO0 es strapping pin: mantenerlo durante el reset entra al descargador ROM, no a la aplicación. La entrada manual es una pulsación de tres segundos en operación que deja una bandera en RTC y reinicia al soltar, igual que en el tracker. Es la única forma de forzar el portal sin un botón dedicado que la placa no tiene.
 
 ## Risks / Trade-offs
 
@@ -109,6 +113,6 @@ Un gateway tiene dos formas de no entregar nada: que el filtro no traiga paquete
 
 ## Open Questions
 
-- ¿El binario sin Bluedroid entra en la partición por defecto de 1.31 MB?
-- ¿`aprsc` acepta el `qAR` de este login con el comportamiento esperado?
-- ¿Qué latencia y pérdida introduce la coexistencia AP+STA con la recepción LoRa a la tasa prevista?
+- ~~¿El binario sin Bluedroid entra en la partición por defecto de 1.31 MB?~~ Resuelto: 960 KB y entra, sin `huge_app.csv`.
+- ¿`aprsc` acepta el `qAR` de este login con el comportamiento esperado? (tarea 8.4)
+- ¿Qué latencia y pérdida introduce la coexistencia AP+STA con la recepción LoRa a la tasa prevista? (tarea 8.5)
