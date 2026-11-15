@@ -8,10 +8,11 @@ Hace falta un equipo único, barato y flasheable que se presente ante el cliente
 
 - Nuevo firmware para LilyGO T-Beam v1.1 (ESP32 clásico + SX1276) construido con PlatformIO y el core Arduino-ESP32.
 - **Interfaz KISS TNC** disponible simultáneamente por Bluetooth Classic SPP y por TCP (`:8001`), con framing FEND/FESC y decodificación de tramas AX.25.
-- **Subida**: cada trama de datos KISS se convierte a texto TNC2, se le quita el path de digipeaters para ahorrar aire y se publica en un canal Meshtastic preconfigurado con un prefijo configurable (por defecto `A#`).
+- **Subida**: cada trama de datos KISS se convierte a texto TNC2 completo —con su path de digipeaters, salvo que el operador active el recorte por aire— y se publica en un canal Meshtastic preconfigurado con el prefijo fijo `A#`.
 - **Recepción**: los textos del canal que llevan el prefijo se convierten de vuelta a tramas AX.25 y se entregan a los clientes KISS conectados, con deduplicación por `(from, id)` y sin reemitir tráfico ajeno.
-- **Portal web de configuración** en modo punto de acceso (callsign, canal, PSK, región, preset, prefijo, límites de transmisión) con persistencia en NVS y árbol de arranque RUN/PORTAL.
+- **Portal web de configuración** en modo punto de acceso, disponible también durante la operación para consultar estado (callsign, canal, PSK, región, preset, recorte de path, límites de transmisión) con persistencia en NVS y árbol de arranque RUN/PORTAL.
 - **Presentación en la malla** como nodo `CLIENT_MUTE` con `long_name` igual al callsign, `hop_limit` 3 y NodeInfo periódico, sin reemisión de paquetes de otros.
+- **Contrato de texto compartido**: el prefijo `A#` y la línea TNC2 completa son la interfaz con el gateway APRS-IS, que se planifica en el cambio `add-aprs-is-gateway`.
 - **Sin conexión a internet**: el equipo no abre sesiones con APRS-IS, no se asocia como cliente a ninguna red WiFi y no depende de servicios externos para operar.
 
 Fuera de alcance en v1: conexión a internet y gateway APRS-IS en cualquier dirección, mensajes directos PKI, `POSITION_APP` y visualización en mapa, gestión del nodo desde la app oficial de Meshtastic, actualización OTA, beacon autónomo con GPS, reemisión de tráfico ajeno y cualquier texto del canal que no lleve el prefijo.

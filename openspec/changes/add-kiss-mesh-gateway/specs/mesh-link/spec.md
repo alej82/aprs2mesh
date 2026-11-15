@@ -36,9 +36,9 @@ El equipo SHALL rechazar las tramas cuyo texto resultante supere el tamaño máx
 - **WHEN** la trama produce un texto que excede el máximo admitido
 - **THEN** el equipo no publica nada, registra el descarte y no entrega nada a los clientes KISS
 
-### Requirement: Prefijo de identificación APRS
+### Requirement: Prefijo fijo de identificación APRS
 
-El equipo SHALL reconocer como candidatos a trama APRS únicamente los textos del canal que comienzan con el prefijo configurado (por defecto `A#`), y SHALL ignorar cualquier otro texto del canal.
+El equipo SHALL reconocer como candidatos a trama APRS únicamente los textos que comienzan con el prefijo compartido `A#`, definido como constante en el código del enlace, y SHALL ignorar cualquier otro texto del canal. El prefijo no SHALL ser configurable, para que tracker y gateway no puedan desincronizarse.
 
 #### Scenario: Texto sin prefijo
 - **WHEN** un usuario de la malla escribe un mensaje normal en el canal
@@ -47,6 +47,10 @@ El equipo SHALL reconocer como candidatos a trama APRS únicamente los textos de
 #### Scenario: Texto con prefijo pero sin forma de trama
 - **WHEN** un texto comienza con el prefijo pero su contenido no es un TNC2 válido
 - **THEN** el equipo lo descarta y registra el motivo
+
+#### Scenario: Marca distinta
+- **WHEN** un texto comienza con otra marca parecida pero no con `A#`
+- **THEN** el equipo lo trata como chat y no intenta interpretarlo
 
 ### Requirement: Identidad del nodo en la malla
 

@@ -1,0 +1,8 @@
+{
+  "name": "config",
+  "version": "0.1.0",
+  "description": "Portable device configuration, defaults and validation (no Arduino)",
+  "build": {
+    "flags": ["-Wall", "-Wextra", "-Wshadow", "-Wconversion"]
+  }
+}

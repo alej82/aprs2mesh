@@ -43,17 +43,19 @@ El requisito es que las tramas "lleguen como texto puro". Un portnum privado ser
 
 **Alternativas descartadas**: `PRIVATE_APP` binario (invisible), y protobuf propio sobre portnum privado (mismo problema, más código).
 
-### D3 · Recorte del path en el aire
+### D3 · El path viaja en el texto; el recorte es una opción de aire
 
-`WIDE1-1,WIDE2-1` no significa nada en una malla y consume aire proporcionalmente. El path se descarta al convertir la trama a texto.
+El texto que circula por la malla es la trama TNC2 completa, incluido su path de digipeaters. El path no significa nada para la malla, pero sí para el extremo APRS-IS: si se descarta acá, el gateway remoto ya no puede reconstruirlo. El recorte queda como una opción de configuración, apagada por defecto, para quien prefiera ahorrar aire a costa de la fidelidad.
 
-**Trade-off aceptado**: la trama que circula por la malla no es idéntica a la que entró por KISS. Para un tracker es correcto: el texto se interpreta solo y el path pertenece al enlace de radio, no al dato. Si algún día se necesita reconstruir la trama original, habría que transportarla completa y resignar aire.
+**Trade-off**: con `WIDE1-1,WIDE2-1` el texto crece unos 14 bytes (~30% de una trama típica). Con un beacon cada pocos minutos y LONG_FAST es despreciable; con tráfico alto no lo es, y ahí se justifica activar el recorte sabiendo que el paquete llegará a APRS-IS sin digis de RF.
 
-### D4 · Prefijo corto y configurable (`A#`)
+**Alternativa descartada**: recortar siempre y que el gateway invente un path. Inventar información en un paquete APRS es peor que perderla.
+
+### D4 · Prefijo corto y fijo (`A#`)
 
 Dos bytes de overhead sobre ~44 de trama. Un prefijo más largo desperdicia aire en cada paquete; detectar "forma TNC2" sin prefijo produce falsos positivos con el chat normal del canal y hace imposible distinguir intención.
 
-**Trade-off aceptado**: el prefijo ensucia un poco la lectura humana del canal. Se documenta y queda configurable.
+**Trade-off aceptado**: el prefijo ensucia un poco la lectura humana del canal. Queda fijo en `lib/mesh` para que tracker y gateway no puedan desincronizarse: un prefijo distinto entre equipos produce silencio total sin ningún error visible. Cambiarlo exige recompilar ambos.
 
 ### D5 · KISS por SPP y TCP en simultáneo, con transmisión serializada
 
@@ -78,9 +80,13 @@ No reemitir elimina la necesidad de deduplicar el reenvío, de reescribir cabece
 | Subida KISS → malla | `(src, payload)` 30 s | APRSdroid reintenta 5 veces sin ACK |
 | Recepción de malla → KISS | `(from, id)` 60 s | El flood entrega el mismo paquete por varios relays |
 
-### D10 · Portal web en modo AP exclusivo, aplicado al reiniciar el enlace
+### D10 · AP permanente, portal disponible en operación
 
-El portal es la única interfaz de administración, así que tiene que funcionar sin PC ni app. Como no hay igate, no hace falta STA: el AP se levanta sólo en modo configuración y no convive con el tráfico de la malla más que durante la administración. Los cambios de canal, clave, región o preset reinician el enlace de radio; prefijo y límites se aplican en caliente.
+El portal es la única interfaz de administración, así que tiene que funcionar sin PC ni app y tiene que poder mostrar estado mientras el equipo opera: el AP se levanta en los dos modos y el portal queda accesible en `192.168.4.1`. No hace falta STA: el equipo nunca se asocia como cliente WiFi. Guardar una configuración válida reinicia el equipo y aplica canal, clave, región y preset; el recorte de path y los límites se aplican al configurar el enlace.
+
+**Trade-off**: el AP convive con SPP y LoRa todo el tiempo, no sólo durante la administración. La tarea 1.6 mide la latencia de SPP con el portal activo; si molesta, la siguiente iteración puede apagar el WiFi tras un tiempo sin clientes web.
+
+El botón es GPIO0, que también es strapping pin: mantenerlo pulsado durante el reset entra en el descargador ROM, no en la aplicación. Por eso la entrada manual al portal es una pulsación larga de tres segundos en operación, con una bandera en RTC que sobrevive al reinicio por software.
 
 ### D11 · El equipo no implementa APRS-IS ni conexión saliente
 
@@ -93,27 +99,30 @@ Es una decisión de arquitectura, no una omisión: un tracker embarcado no debe 
 ```
 src/
   main.cpp              arranque, modos, lazo principal
-  kiss_codec.*          FEND/FESC, tipos de trama, puertos
-  ax25.*                AX.25 ↔ TNC2, direcciones desplazadas, UI/PID
-  transport_bt.*        SPP (BluetoothSerial)
-  transport_tcp.*       servidor KISS :8001
-  mesh_proto.*          protobuf mínimo, hash de canal
-  mesh_crypto.*         AES-CTR, nonce (id, from)
-  mesh_radio.*          RadioLib, región, preset, TX/RX
-  mesh_node.*           NodeInfo, identidad, hop limit, rol
-  dedupe.*              las dos ventanas de D9
-  tx_queue.*            cola acotada, límites de tasa, disciplina de aire
-  config_store.*        NVS atómica, validación
-  portal.*              AP, formulario, estado
+  config_store.*        blob NVS atómico
+  portal.*              formulario, validación y página de estado
+  transport/            adaptadores Arduino: SPP y servidor KISS TCP
+lib/kiss/               codec KISS, AX.25 ↔ TNC2, hub de clientes
+lib/mesh/               protobuf, cabecera, AES-CTR, texto A#, dedupe, cola de aire
+lib/bridge/             pipeline KISS ↔ malla, eco y contadores
+lib/config/             modelo, validación y base64 de la PSK
 ```
+
+El radio sigue pendiente: `mesh_radio.*` y `mesh_node.*` se agregan en las tareas 3.3-3.6.
 
 ### D13 · Modelo de datos de configuración
 
-`Config`: callsign, nombre BT, canal, PSK, región, preset, prefijo, tasa máxima de subida e intervalo mínimo entre transmisiones. Vive en NVS y se valida antes de escribirse.
+`Config`: callsign, nombre BT, canal, PSK (base64, como la muestra la app de Meshtastic), región, preset, recorte de path, tasa máxima de subida e intervalo mínimo entre transmisiones. Vive en NVS como un único blob validado antes de escribirse; sin callsign válido el equipo arranca en modo portal y no inicia el enlace.
+
+### D14 · El contrato de texto entre firmwares
+
+La interfaz con el gateway es una línea TNC2 completa precedida por el prefijo fijo `A#`, en ASCII imprimible y con un máximo de unos 200 bytes. El tracker no reescribe el path de la bajada: entrega lo que venga en el texto. Así cada extremo decide las reglas de su dominio —radio APRS en el tracker, internet en el gateway— sin compartir estado.
+
+**Trade-off**: no hay handshake ni versión negociada. Un desajuste de canal, preset o PSK se manifiesta como silencio. El diagnóstico vive del lado del gateway, que sí ve la malla y puede contar lo que recibe.
 
 ## Risks / Trade-offs
 
-- **Coexistencia BT clásico + WiFi** → el AP sólo se levanta en modo configuración; medir latencia de SPP con el portal activo y, si molesta, exigir desconectar el TNC durante la administración.
+- **Coexistencia BT clásico + WiFi permanente** → el AP queda arriba en operación para que el portal muestre estado; medir latencia de SPP con el portal activo (tarea 1.6) y, si molesta, apagar el WiFi tras un tiempo sin clientes web.
 - **Presión de RAM** (Bluedroid + lwIP + LoRa en 520 KB) → buffers estáticos, colas acotadas, sin asignaciones dinámicas en el camino caliente; verificar si la unidad tiene PSRAM.
 - **Sin internet no hay persistencia remota** → si en el momento de transmitir no hay ningún nodo de la malla en alcance, la trama se pierde. Es inherente a un tracker local; se mitiga con contadores visibles y con la disciplina de reintento del cliente APRS.
 - **Legalidad del enlace** → la malla opera en banda SRD, no de radioaficionados. El proyecto debe advertirlo explícitamente y no asumir licencia del operador.

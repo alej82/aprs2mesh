@@ -27,27 +27,28 @@
 - [ ] 3.4 Transmitir un `TEXT_MESSAGE_APP` de prueba y verificarlo en un nodo Meshtastic estándar
 - [ ] 3.5 Recibir y descifrar un `TEXT_MESSAGE_APP` emitido por un nodo estándar
 - [ ] 3.6 Anunciar NodeInfo con `long_name` igual al callsign, rol `CLIENT_MUTE` y número de nodo derivado del hardware
-- [ ] 3.7 Filtrar la recepción por prefijo configurado y descartar los textos que no lo llevan
-- [ ] 3.8 Implementar deduplicación de recepción por `(from, id)` con ventana de 60 s
-- [ ] 3.9 Implementar la cola de transmisión acotada con límite de tasa e intervalo mínimo, y sus contadores de descarte
-- [ ] 3.10 Descartar en silencio paquetes no descifrables, de otros canales o de portnums distintos de texto
+- [x] 3.7 Filtrar la recepción por el prefijo fijo `A#` y descartar los textos que no lo llevan
+- [x] 3.8 Implementar deduplicación de recepción por `(from, id)` con ventana de 60 s
+- [x] 3.9 Implementar la cola de transmisión acotada con límite de tasa e intervalo mínimo, y sus contadores de descarte
+- [x] 3.10 Descartar en silencio paquetes no descifrables, de otros canales o de portnums distintos de texto
 
 ## 4. Integración KISS ↔ malla
 
-- [ ] 4.1 Implementar el pipeline de subida: KISS → AX.25 → TNC2 → recorte de path → prefijo → cola de malla
-- [ ] 4.2 Implementar deduplicación de subida por `(src, payload)` con ventana de 30 s
-- [ ] 4.3 Implementar el pipeline de bajada: prefijo → validación TNC2 → AX.25 → entrega a todos los clientes KISS
-- [ ] 4.4 Suprimir el eco de las tramas propias comparando el número de nodo
-- [ ] 4.5 Rechazar y registrar textos o tramas que excedan el tamaño máximo admitido
-- [ ] 4.6 Exponer contadores de tramas subidas, bajadas y descartadas con su motivo
+- [x] 4.1 Implementar el pipeline de subida: KISS → AX.25 → TNC2 con path completo → prefijo → cola de malla
+- [x] 4.2 Implementar deduplicación de subida por `(src, payload)` con ventana de 30 s
+- [x] 4.3 Implementar el pipeline de bajada: prefijo → validación TNC2 → AX.25 → entrega a todos los clientes KISS
+- [x] 4.4 Suprimir el eco de las tramas propias comparando el número de nodo
+- [x] 4.5 Rechazar y registrar textos o tramas que excedan el tamaño máximo admitido
+- [x] 4.6 Exponer contadores de tramas subidas, bajadas y descartadas con su motivo
+- [x] 4.7 Implementar el recorte de path como opción de configuración desactivada por defecto, con registro cuando se aplica
 
 ## 5. Configuración y portal
 
-- [ ] 5.1 Implementar `Config` en NVS con escritura atómica y valores por defecto que dejen el equipo en modo portal
-- [ ] 5.2 Implementar la validación de callsign, PSK, región y preset con error por campo y conservación de la configuración previa
-- [ ] 5.3 Implementar el punto de acceso protegido y el servidor web con formulario y página de estado
-- [ ] 5.4 Implementar los modos de arranque: portal sin configuración válida o con el botón pulsado, y reinicio del enlace al guardar
-- [ ] 5.5 Mostrar en el portal el modo, la versión, los clientes KISS, los contadores, la memoria libre y el último error
+- [x] 5.1 Implementar `Config` en NVS con escritura atómica y valores por defecto que dejen el equipo en modo portal
+- [x] 5.2 Implementar la validación de callsign, PSK, región y preset con error por campo y conservación de la configuración previa
+- [x] 5.3 Implementar el punto de acceso protegido y el servidor web con formulario y página de estado
+- [x] 5.4 Implementar los modos de arranque: portal sin configuración válida o con el botón pulsado, y reinicio del enlace al guardar
+- [x] 5.5 Mostrar en el portal el modo, la versión, los clientes KISS, los contadores, la memoria libre y el último error
 - [ ] 5.6 Verificar que el punto de acceso no interfiere con el servicio KISS ni con la recepción de la malla
 
 ## 6. Validación en banco y campo
@@ -58,5 +59,5 @@
 - [ ] 6.4 Verificar que Direwolf por TCP envía y recibe correctamente y en paralelo con un cliente SPP
 - [ ] 6.5 Medir el aire consumido por trama con los presets LONG_FAST y MEDIUM_FAST y ajustar los límites configurados
 - [ ] 6.6 Verificar que el equipo funciona sin ninguna conexión a internet y que no intenta conexiones salientes
-- [ ] 6.7 Documentar advertencias legales (banda SRD, licencia) y visibilidad del canal
-- [ ] 6.8 Documentar flasheo, provisión inicial y rollback al firmware oficial de Meshtastic
+- [x] 6.7 Documentar advertencias legales (banda SRD, licencia) y visibilidad del canal
+- [x] 6.8 Documentar flasheo, provisión inicial y rollback al firmware oficial de Meshtastic

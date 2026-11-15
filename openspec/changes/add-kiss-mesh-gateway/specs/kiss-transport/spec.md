@@ -80,13 +80,17 @@ El equipo SHALL construir una trama AX.25 de tipo UI (control `0x03`, PID `0xF0`
 - **WHEN** el texto tiene forma de trama pero el destino no es un callsign válido
 - **THEN** el equipo lo descarta y registra el motivo
 
-### Requirement: Recorte del path antes de publicar
+### Requirement: Preservación del path antes de publicar
 
-El equipo SHALL eliminar el path de digipeaters del texto que publica en la malla para minimizar el tamaño en el aire, ya que ese path pertenece al enlace de radio APRS y no tiene significado en la malla.
+El equipo SHALL conservar el path de digipeaters en el texto que publica en la malla, porque el gateway APRS-IS lo necesita para reconstruir la trama original. El recorte SHALL ser una opción de configuración desactivada por defecto; cuando esté activa, el equipo elimina el path y registra que lo hizo.
 
-#### Scenario: Trama con dos digipeaters
+#### Scenario: Path conservado por defecto
 - **WHEN** se publica en la malla una trama con path `WIDE1-1,WIDE2-1`
-- **THEN** el texto publicado no contiene el path
+- **THEN** el texto publicado contiene ese path
+
+#### Scenario: Recorte activado por el operador
+- **WHEN** el operador activa el recorte de path en el portal
+- **THEN** el texto publicado no contiene digipeaters y el equipo registra el recorte
 
 #### Scenario: Trama solo con origen y destino
 - **WHEN** la trama no trae digipeaters

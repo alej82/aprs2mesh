@@ -1,0 +1,16 @@
+{
+  "name": "bridge",
+  "version": "0.1.0",
+  "description": "KISS <-> mesh text pipeline: uplink, downlink, dedupe and airtime queue",
+  "dependencies": [
+    {
+      "name": "kiss"
+    },
+    {
+      "name": "mesh"
+    }
+  ],
+  "build": {
+    "flags": ["-Wall", "-Wextra", "-Wshadow", "-Wconversion"]
+  }
+}

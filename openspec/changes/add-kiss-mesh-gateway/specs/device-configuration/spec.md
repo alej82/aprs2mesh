@@ -22,7 +22,7 @@ El equipo SHALL exponer un portal de configuración accesible en `192.168.4.1` m
 
 ### Requirement: Parámetros configurables
 
-El portal SHALL permitir configurar al menos: callsign del operador, nombre Bluetooth del equipo, nombre de canal, clave precompartida del canal, región, preset de módem, prefijo APRS, límite de tasa de transmisión e intervalo mínimo entre transmisiones.
+El portal SHALL permitir configurar al menos: callsign del operador, nombre Bluetooth del equipo, nombre de canal, clave precompartida del canal, región, preset de módem, recorte de path, límite de tasa de transmisión e intervalo mínimo entre transmisiones.
 
 #### Scenario: Cambio de canal y clave
 - **WHEN** el operador modifica el nombre de canal y la clave precompartida y guarda
@@ -58,15 +58,15 @@ El equipo SHALL almacenar la configuración en memoria no volátil de forma ató
 
 ### Requirement: Modos de arranque
 
-El equipo SHALL arrancar en modo operación cuando exista una configuración válida y SHALL arrancar en modo portal cuando no la haya o cuando el operador mantenga pulsado el botón durante el arranque. Al salir del modo portal, el equipo SHALL reiniciar el enlace con la configuración vigente.
+El equipo SHALL arrancar en modo operación cuando exista una configuración válida y SHALL arrancar en modo portal cuando no la haya o cuando el operador mantenga pulsado el botón del equipo durante unos segundos. Al salir del modo portal, el equipo SHALL reiniciar el enlace con la configuración vigente.
 
 #### Scenario: Primer arranque
 - **WHEN** el equipo se enciende sin configuración válida
 - **THEN** arranca en modo portal y no transmite por la malla
 
 #### Scenario: Entrada manual al portal
-- **WHEN** el operador mantiene pulsado el botón durante el arranque
-- **THEN** el equipo arranca en modo portal aunque tenga configuración válida
+- **WHEN** el operador mantiene pulsado el botón del equipo durante tres segundos en modo operación
+- **THEN** el equipo reinicia en modo portal aunque tenga configuración válida
 
 #### Scenario: Salida del portal
 - **WHEN** el operador guarda una configuración válida y solicita reiniciar
