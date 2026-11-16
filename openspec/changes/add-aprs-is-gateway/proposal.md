@@ -13,7 +13,7 @@ La alternativa conocida es una computadora con Direwolf haciendo de igate, pero 
 - **Bajada por pinhole**: solo se admiten mensajes APRS dirigidos a una estación que originó un intercambio reciente (TTL configurable, 60 min por defecto). Beacons, objetos, boletines y paquetes de terceros se descartan.
 - **Reescritura de bajada**: los constructs `q` y el pseudo-digi `TCPIP*` se normalizan a un path `TCPIP*`, para marcar que el paquete viene de internet y evitar que un cliente lo reinyecte como si fuera RF.
 - **Monitor KISS de solo lectura** en TCP, con las tramas de ambos sentidos en formato AX.25 para Direwolf/Xastir; lo que el cliente intente transmitir se descarta.
-- **Portal propio** (`aprs2mesh-gw`) con credenciales APRS-IS, filtro, TTL, tasas, estado del gate y contadores que distinguen "no llegó nada" de "llegó y se rechazó".
+- **Portal propio** (`aprs2mesh-gw`) con credenciales APRS-IS, filtro, TTL, tasas, región, preset fijo o `CUSTOM` (frecuencia, ancho de banda, factor de dispersión y tasa de codificación), número de saltos, estado del gate y contadores que distinguen "no llegó nada" de "llegó y se rechazó".
 - **Política abierta al canal**: al ser un canal privado con PSK propia, cualquier miembro puede inyectar; se compensa con registro por inyección, límites de tasa y un interruptor de cierre del gate.
 - **Separación de código compartido**: AX.25/TNC2 sale de `lib/kiss` a `lib/aprs` para que el gateway no arrastre el hub ni los transportes del tracker; dedupe y cola de transmisión pasan a `lib/mesh`.
 

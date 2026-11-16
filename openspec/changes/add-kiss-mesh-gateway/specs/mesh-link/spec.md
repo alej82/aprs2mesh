@@ -6,15 +6,35 @@ Publica y recibe las tramas APRS como texto plano dentro de un canal Meshtastic 
 
 ### Requirement: Configuración de enlace compatible con Meshtastic
 
-El equipo SHALL transmitir y recibir utilizando exactamente la región, el preset de módem, el nombre de canal y la clave precompartida configurados, de forma que un nodo Meshtastic estándar con la misma configuración pueda leer y recibir sus mensajes.
+El equipo SHALL transmitir y recibir utilizando exactamente la región, el preset de módem, el nombre de canal y la clave precompartida configurados, de forma que un nodo Meshtastic estándar con la misma configuración pueda leer y recibir sus mensajes. Cuando el preset sea `CUSTOM`, el equipo SHALL usar la frecuencia, el ancho de banda, el factor de dispersión y la tasa de codificación configurados, equivalentes a `use_preset = false` y `override_frequency` en Meshtastic.
 
 #### Scenario: Nodo estándar con la misma configuración
 - **WHEN** el equipo publica un texto en el canal configurado y existe un nodo Meshtastic estándar con región, preset, canal y clave idénticos
 - **THEN** ese nodo recibe el texto y lo muestra como mensaje de canal
 
+#### Scenario: Nodo estándar con módem CUSTOM
+- **WHEN** el equipo y un nodo Meshtastic estándar usan `CUSTOM` con la misma frecuencia, ancho de banda, factor de dispersión y tasa de codificación
+- **THEN** ambos se reciben mutuamente igual que con un preset fijo
+
 #### Scenario: Configuración de canal incorrecta
-- **WHEN** la región, el preset o la clave configurados no coinciden con los de la malla
+- **WHEN** la región, el preset, los parámetros custom o la clave configurados no coinciden con los de la malla
 - **THEN** el equipo no recibe tráfico y sus transmisiones no son legibles por los demás nodos, sin generar errores hacia los clientes KISS
+
+### Requirement: Resolución del módem efectivo
+
+El equipo SHALL derivar la frecuencia de un preset fijo a partir de la banda de la región, el ancho de banda y el nombre de canal, con el mismo criterio de reparto de canales que Meshtastic, y SHALL usar los parámetros configurados cuando el preset sea `CUSTOM`. La frecuencia custom SHALL ocupar un ancho de banda completo dentro de la banda de la región.
+
+#### Scenario: Preset fijo en EU868
+- **WHEN** el equipo usa un preset fijo de 250 kHz en EU868
+- **THEN** selecciona 869.525 MHz, único centro que deja el ancho de banda completo dentro de la banda
+
+#### Scenario: Preset fijo en US915
+- **WHEN** el equipo usa un preset fijo en US915
+- **THEN** la frecuencia corresponde al slot que Meshtastic calcula para el nombre de canal y el ancho de banda
+
+#### Scenario: Parámetros custom fuera de la banda
+- **WHEN** el operador configura una frecuencia custom cuya ocupación se sale de la banda de la región
+- **THEN** el equipo rechaza la configuración y no inicia el enlace de radio con esos valores
 
 ### Requirement: Publicación de una trama como un único texto
 
@@ -66,15 +86,19 @@ El equipo SHALL presentarse en la malla como un nodo de rol `CLIENT_MUTE` cuyo n
 
 ### Requirement: No reemisión de tráfico ajeno
 
-El equipo SHALL no retransmitir paquetes originados por otros nodos, y SHALL fijar un límite de saltos en sus propias transmisiones para que los relays de la malla las reenvíen.
+El equipo SHALL no retransmitir paquetes originados por otros nodos, y SHALL fijar en sus propias transmisiones el límite de saltos configurado, entre 0 y 7, para que los relays de la malla las reenvíen. El mismo límite SHALL aplicarse a todos los paquetes propios, incluidos los textos APRS y el NodeInfo.
 
 #### Scenario: Paquete de otro nodo
 - **WHEN** el equipo recibe un paquete originado por un tercero que no necesita repetir
 - **THEN** no lo retransmite y no altera el tráfico de la malla
 
 #### Scenario: Alcance multihop de las propias transmisiones
-- **WHEN** el equipo publica un texto con límite de saltos mayor que uno
+- **WHEN** el equipo publica un texto o anuncia su NodeInfo con un límite de saltos mayor que uno
 - **THEN** los nodos intermedios pueden reenviarlo y estaciones fuera de alcance directo lo reciben
+
+#### Scenario: Límite de saltos cero
+- **WHEN** el operador configura cero saltos
+- **THEN** el equipo sólo alcanza a sus vecinos directos y no depende de relays
 
 ### Requirement: Deduplicación de recepción
 

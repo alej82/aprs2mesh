@@ -23,14 +23,15 @@
 
 - [x] 3.1 Implementar el codificador/decodificador protobuf manual de `MeshPacket`, `Data` y `User`, con pruebas
 - [x] 3.2 Implementar el hash de canal y AES-CTR con nonce `(id, from)`, con pruebas contra vectores conocidos
-- [ ] 3.3 Configurar RadioLib por región y preset (frecuencia, SF, BW, CR, sync word, preamble, CRC)
+- [ ] 3.3 Configurar RadioLib por región, preset fijo y modo `CUSTOM` (frecuencia, BW, SF, CR, sync word, preamble, CRC)
 - [ ] 3.4 Transmitir un `TEXT_MESSAGE_APP` de prueba y verificarlo en un nodo Meshtastic estándar
 - [ ] 3.5 Recibir y descifrar un `TEXT_MESSAGE_APP` emitido por un nodo estándar
-- [ ] 3.6 Anunciar NodeInfo con `long_name` igual al callsign, rol `CLIENT_MUTE` y número de nodo derivado del hardware
+- [ ] 3.6 Anunciar NodeInfo con `long_name` igual al callsign, rol `CLIENT_MUTE`, número de nodo derivado del hardware y el límite de saltos configurado
 - [x] 3.7 Filtrar la recepción por el prefijo fijo `A#` y descartar los textos que no lo llevan
 - [x] 3.8 Implementar deduplicación de recepción por `(from, id)` con ventana de 60 s
 - [x] 3.9 Implementar la cola de transmisión acotada con límite de tasa e intervalo mínimo, y sus contadores de descarte
 - [x] 3.10 Descartar en silencio paquetes no descifrables, de otros canales o de portnums distintos de texto
+- [x] 3.11 Implementar el resolvedor de módem efectivo compartido: tabla fija, cálculo de frecuencia por región y canal, parámetros custom y saltos, con pruebas de host
 
 ## 4. Integración KISS ↔ malla
 
@@ -50,6 +51,10 @@
 - [x] 5.4 Implementar los modos de arranque: portal sin configuración válida o con el botón pulsado, y reinicio del enlace al guardar
 - [x] 5.5 Mostrar en el portal el modo, la versión, los clientes KISS, los contadores, la memoria libre y el último error
 - [ ] 5.6 Verificar que el punto de acceso no interfiere con el servicio KISS ni con la recepción de la malla
+- [x] 5.7 Ampliar `Config` con el bloque de módem (preset `CUSTOM`, frecuencia, BW, SF, CR) y saltos, y subir la versión del blob NVS
+- [x] 5.8 Validar los parámetros custom (rango y ocupación de banda) y el número de saltos con error por campo y conservación de la configuración previa
+- [x] 5.9 Implementar el bloque `CUSTOM` en el portal, con visibilidad condicionada, valores por defecto 62.5 kHz / SF7 / CR 4/5 y estimación de aire en vivo
+- [x] 5.10 Mostrar la huella de módem efectiva y la sugerencia de `maxPerMinute` en el portal
 
 ## 6. Validación en banco y campo
 
@@ -57,7 +62,8 @@
 - [ ] 6.2 Verificar que una respuesta escrita con el prefijo en la app aparece como paquete en APRSdroid
 - [ ] 6.3 Verificar que un texto sin prefijo en el canal no genera ninguna trama KISS
 - [ ] 6.4 Verificar que Direwolf por TCP envía y recibe correctamente y en paralelo con un cliente SPP
-- [ ] 6.5 Medir el aire consumido por trama con los presets LONG_FAST y MEDIUM_FAST y ajustar los límites configurados
+- [ ] 6.5 Medir el aire consumido por trama con los presets fijos y con distintas combinaciones de BW/SF en `CUSTOM`, y verificar la estimación y la sugerencia de límite
 - [ ] 6.6 Verificar que el equipo funciona sin ninguna conexión a internet y que no intenta conexiones salientes
 - [x] 6.7 Documentar advertencias legales (banda SRD, licencia) y visibilidad del canal
 - [x] 6.8 Documentar flasheo, provisión inicial y rollback al firmware oficial de Meshtastic
+- [ ] 6.9 Verificar `CUSTOM` y el límite de saltos contra un nodo Meshtastic estándar configurado con `use_preset = false`

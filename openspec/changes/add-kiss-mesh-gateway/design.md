@@ -82,11 +82,11 @@ No reemitir elimina la necesidad de deduplicar el reenvío, de reescribir cabece
 
 ### D10 · AP permanente, portal disponible en operación
 
-El portal es la única interfaz de administración, así que tiene que funcionar sin PC ni app y tiene que poder mostrar estado mientras el equipo opera: el AP se levanta en los dos modos y el portal queda accesible en `192.168.4.1`. No hace falta STA: el equipo nunca se asocia como cliente WiFi. Guardar una configuración válida reinicia el equipo y aplica canal, clave, región y preset; el recorte de path y los límites se aplican al configurar el enlace.
+El portal es la única interfaz de administración, así que tiene que funcionar sin PC ni app y tiene que poder mostrar estado mientras el equipo opera: el AP se levanta en los dos modos y el portal queda accesible en `192.168.4.1`. No hace falta STA: el equipo nunca se asocia como cliente WiFi. Guardar una configuración válida reinicia el equipo y aplica canal, clave, región, módem y saltos; el recorte de path y los límites se aplican al configurar el enlace.
 
 **Trade-off**: el AP convive con SPP y LoRa todo el tiempo, no sólo durante la administración. La tarea 1.6 mide la latencia de SPP con el portal activo; si molesta, la siguiente iteración puede apagar el WiFi tras un tiempo sin clientes web.
 
-El botón es GPIO0, que también es strapping pin: mantenerlo pulsado durante el reset entra en el descargador ROM, no en la aplicación. Por eso la entrada manual al portal es una pulsación larga de tres segundos en operación, con una bandera en RTC que sobrevive al reinicio por software.
+La entrada manual al portal es una pulsación larga de tres segundos en el botón de usuario (IO38) en operación, con una bandera en RTC que sobrevive al reinicio por software. La T-Beam v1.1 no expone un botón BOOT: sus tres botones son PWR, IO38 y RST, y GPIO0 sólo es el pin de strapping.
 
 ### D11 · El equipo no implementa APRS-IS ni conexión saliente
 
@@ -112,13 +112,29 @@ El radio sigue pendiente: `mesh_radio.*` y `mesh_node.*` se agregan en las tarea
 
 ### D13 · Modelo de datos de configuración
 
-`Config`: callsign, nombre BT, canal, PSK (base64, como la muestra la app de Meshtastic), región, preset, recorte de path, tasa máxima de subida e intervalo mínimo entre transmisiones. Vive en NVS como un único blob validado antes de escribirse; sin callsign válido el equipo arranca en modo portal y no inicia el enlace.
+`Config`: callsign, nombre BT, canal, PSK (base64, como la muestra la app de Meshtastic), región, bloque de módem (preset, frecuencia, ancho de banda, factor de dispersión y tasa de codificación), número de saltos, recorte de path, tasa máxima de subida e intervalo mínimo entre transmisiones. Vive en NVS como un único blob validado antes de escribirse; sin callsign válido el equipo arranca en modo portal y no inicia el enlace.
 
 ### D14 · El contrato de texto entre firmwares
 
 La interfaz con el gateway es una línea TNC2 completa precedida por el prefijo fijo `A#`, en ASCII imprimible y con un máximo de unos 200 bytes. El tracker no reescribe el path de la bajada: entrega lo que venga en el texto. Así cada extremo decide las reglas de su dominio —radio APRS en el tracker, internet en el gateway— sin compartir estado.
 
-**Trade-off**: no hay handshake ni versión negociada. Un desajuste de canal, preset o PSK se manifiesta como silencio. El diagnóstico vive del lado del gateway, que sí ve la malla y puede contar lo que recibe.
+**Trade-off**: no hay handshake ni versión negociada. Un desajuste de canal, preset, parámetros de módem o PSK se manifiesta como silencio. El diagnóstico vive del lado del gateway, que sí ve la malla y puede contar lo que recibe.
+
+### D15 · Preset `CUSTOM`, frecuencia absoluta y saltos independientes
+
+El selector de preset incorpora `CUSTOM`. En ese modo el operador fija frecuencia, ancho de banda, factor de dispersión y tasa de codificación; con un preset fijo se usa su tabla y la frecuencia se deriva de la región, el ancho de banda y el nombre de canal, como hace Meshtastic. El hop limit (0–7) es un campo aparte y se aplica a todos los paquetes propios, incluidos los textos APRS y el NodeInfo.
+
+En el firmware actual de Meshtastic `CUSTOM` no es un valor del enum `ModemPreset`: se representa con `use_preset = false` y los campos `bandwidth`, `spread_factor` y `coding_rate`, mientras que una frecuencia absoluta corresponde a `override_frequency`. Mantener esa correspondencia deja la configuración exportable a la app oficial en el futuro.
+
+Decisiones concretas:
+
+- La frecuencia custom se valida con **todo el ancho de banda ocupado** dentro de la banda de la región, no sólo el centro. EU868 mide 869.4–869.65 MHz: con 250 kHz el único centro válido es 869.525 MHz y 500 kHz es imposible; US915 mide 902–928 MHz. Se introduce con precisión de 1 kHz (tres decimales) y se guarda en Hz.
+- Valores admitidos: ancho de banda 31.25, 41.67, 62.5, 125, 250 o 500 kHz; factor de dispersión 7–12; tasa de codificación 5–8 (4/5 a 4/8). Sync word, preamble y CRC quedan fijos como en Meshtastic.
+- Los campos custom se conservan al cambiar a un preset fijo y sólo se validan cuando `CUSTOM` está activo. Si nunca se usaron, el portal precarga 62.5 kHz, SF7 y CR 4/5, y la frecuencia efectiva actual.
+- El bloque custom se muestra sólo al elegir `CUSTOM`; sin JavaScript queda visible con una nota. La estimación de aire por trama se calcula en vivo mientras se edita y sugiere un `maxPerMinute` sostenible según el ciclo de trabajo de la región. La sugerencia se puede aplicar con un botón; no se impone ni bloquea el guardado.
+- La versión del blob NVS sube y las configuraciones de la v1 vuelven al portal. No hay migración porque la v1 nunca llegó a un tracker; el gateway ya se flasheó con la v2.
+
+**Trade-off**: `CUSTOM` deja al operador romper la interoperabilidad con un sólo decimal mal puesto, y una modulación lenta puede consumir mucho más aire del que los límites por defecto suponen. El aviso en vivo y la huella efectiva en el estado son la mitigación; no se valida contra la malla porque no hay forma de descubrirla sin hablarla.
 
 ## Risks / Trade-offs
 
@@ -134,7 +150,7 @@ La interfaz con el gateway es una línea TNC2 completa precedida por el prefijo 
 ## Migration Plan
 
 1. Banco: flashear por USB con PlatformIO y validar KISS con Direwolf antes de tocar radio.
-2. Provisionar por portal (callsign, canal, PSK, región, preset) y verificar interop con un nodo Meshtastic estándar.
+2. Provisionar por portal (callsign, canal, PSK, región, preset o `CUSTOM`, y saltos) y verificar interop con un nodo Meshtastic estándar.
 3. Prueba de campo con el cliente APRS real y ajuste de los límites de aire según el preset elegido.
 4. Rollback: el T-Beam se restaura al firmware oficial de Meshtastic con el flasher web; no hay estado persistente incompatible.
 

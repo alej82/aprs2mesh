@@ -86,11 +86,17 @@ Un gateway tiene dos formas de no entregar nada: que el filtro no traiga paquete
 
 ### D11 · Identidad del gateway en la malla
 
-`long_name` igual al callsign del gateway (con SSID distinto al del tracker, por ejemplo `-10`), rol `CLIENT_MUTE`, `hop_limit` 3 y NodeInfo periódico. No reemite tráfico ajeno. El callsign es también el de la línea de login y el del construct `qAR`.
+`long_name` igual al callsign del gateway (con SSID distinto al del tracker, por ejemplo `-10`), rol `CLIENT_MUTE`, `hop_limit` configurable (3 por defecto) y NodeInfo periódico. No reemite tráfico ajeno. El callsign es también el de la línea de login y el del construct `qAR`.
 
 ### D12 · Entrada manual al portal con pulsación larga
 
-GPIO0 es strapping pin: mantenerlo durante el reset entra al descargador ROM, no a la aplicación. La entrada manual es una pulsación de tres segundos en operación que deja una bandera en RTC y reinicia al soltar, igual que en el tracker. Es la única forma de forzar el portal sin un botón dedicado que la placa no tiene.
+La T-Beam v1.1 no tiene botón BOOT: sus tres botones son PWR, IO38 y RST, y GPIO0 sólo es el pin de strapping. La entrada manual es una pulsación de tres segundos en el botón de usuario (IO38) en operación, que deja una bandera en RTC y reinicia al soltar, igual que en el tracker. Es la única forma de forzar el portal sin un botón dedicado.
+
+### D13 · Módem compartido con el tracker
+
+El gateway no define su propio modulador: reutiliza el bloque de módem de `lib/config` para región, preset, parámetros `CUSTOM` y número de saltos. Así el portal del gateway expone los mismos campos, los mismos valores por defecto y la misma validación que el tracker, y un desajuste de radio se detecta comparando las huellas efectivas de los dos portales. El resto de la configuración del gateway —APRS-IS, WiFi, flujos y tasas— sigue siendo independiente.
+
+El detalle de la resolución del módem, los rangos admitidos y la estimación de aire está en el diseño del tracker (D15), para no duplicar la decisión. En el portal del gateway la sugerencia de aire se aplica a `downlinkPerMinute`, que es la tasa que consume LoRa; la subida va a APRS-IS y no gasta aire de malla.
 
 ## Risks / Trade-offs
 
@@ -106,7 +112,7 @@ GPIO0 es strapping pin: mantenerlo durante el reset entra al descargador ROM, no
 ## Migration Plan
 
 1. Compilar `server_tbeam` y medir tamaño; decidir partición.
-2. Provisionar por portal: callsign del gateway, credenciales APRS-IS, filtro conservador, canal y PSK iguales al tracker.
+2. Provisionar por portal: callsign del gateway, credenciales APRS-IS, filtro conservador, y canal, PSK, módem y saltos iguales al tracker.
 3. Banco: verificar login verificado, subida con `qAR` y bajada por pinhole con un APRS-IS real, mirando el monitor con Direwolf.
 4. Campo: comprobar el paquete en `aprs.fi` y la respuesta en el cliente APRS del tracker.
 5. Rollback: el T-Beam vuelve al firmware oficial de Meshtastic con el flasher web.
