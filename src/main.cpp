@@ -27,14 +27,16 @@ namespace {
 
 constexpr uint32_t kStatsIntervalMs = 30000;
 constexpr uint32_t kPortalHoldMs = 3000;
-constexpr uint8_t kPortalButtonPin = 0;  // BOOT button on the T-Beam
+// The T-Beam v1.1 has PWR, IO38 and RST buttons; there is no BOOT button.
+// IO38 is the user button, active low with the internal pull-up.
+constexpr uint8_t kPortalButtonPin = 38;
 constexpr uint32_t kForcePortalMagic = 0x504F5254u;  // "PORT"
 constexpr char kAccessPointSsid[] = "aprs2mesh";
 constexpr char kAccessPointPassword[] = "aprs2mesh";
 
 // Survives a software restart, so a long press in run mode can reboot straight
-// into portal mode. GPIO0 is a strapping pin: holding it through reset would
-// enter the ROM downloader instead of the application, hence the restart.
+// into portal mode. The flag lets the button be read only as a normal input
+// during operation, never as a boot strap.
 RTC_NOINIT_ATTR uint32_t gForcePortalFlag;
 
 aprs2mesh::KissHub gHub;
@@ -178,7 +180,9 @@ void setup() {
   gBridge.setNodeNumber(static_cast<uint32_t>(ESP.getEfuseMac()));
   startAccessPoint();
 
-  pinMode(kPortalButtonPin, INPUT_PULLUP);
+  // IO38 is input-only and has no internal pull-up; the T-Beam provides the
+  // external pull-up for its user button.
+  pinMode(kPortalButtonPin, INPUT);
   delay(20);
 
   // A long press in run mode sets the RTC flag and restarts; the flag is
@@ -224,8 +228,8 @@ void loop() {
   }
 
   if (gLinkRunning && !rebootForPortal && portalLongPress(now)) {
-    // Set the flag now, but wait for the release: rebooting with GPIO0 still
-    // held makes the ROM bootloader enter download mode instead of the app.
+    // Set the flag now and wait for the release before restarting, so the next
+    // boot consumes the flag with the button in a known state.
     rebootForPortal = true;
     gForcePortalFlag = kForcePortalMagic;
     Serial.println("portal: release the button to reboot into portal mode");

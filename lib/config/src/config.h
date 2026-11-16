@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "modem.h"
+
 namespace aprs2mesh {
 
 inline constexpr size_t kConfigCallsign = 12;
@@ -15,10 +17,6 @@ inline constexpr uint32_t kConfigMaxIntervalMs = 60000;
 inline constexpr uint16_t kConfigDefaultPerMinute = 6;
 inline constexpr uint32_t kConfigDefaultIntervalMs = 10000;
 
-// Indices only; task 3.3 maps them to RadioLib frequencies and modem settings.
-enum class RegionCode : uint8_t { Eu868 = 0, Us915, Count };
-enum class ModemPresetCode : uint8_t { LongFast = 0, MediumFast, ShortFast, Count };
-
 enum class ConfigField : uint8_t {
   None = 0,
   Callsign,
@@ -27,6 +25,11 @@ enum class ConfigField : uint8_t {
   Psk,
   Region,
   Preset,
+  Frequency,
+  Bandwidth,
+  SpreadFactor,
+  CodingRate,
+  HopLimit,
   RateLimit,
   MinInterval,
 };
@@ -38,7 +41,7 @@ struct Config {
   uint8_t psk[kConfigPsk] = {};
   uint8_t pskLength = 0;
   RegionCode region = RegionCode::Eu868;
-  ModemPresetCode preset = ModemPresetCode::LongFast;
+  ModemConfig modem;
   bool stripPath = false;
   uint16_t maxPerMinute = kConfigDefaultPerMinute;
   uint16_t minIntervalMs = kConfigDefaultIntervalMs;

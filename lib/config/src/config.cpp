@@ -33,6 +33,26 @@ bool printable(const char* value, size_t maximum, bool allowEmpty) {
   return true;
 }
 
+ConfigField configFieldForModem(ModemField field) {
+  switch (field) {
+    case ModemField::None:
+      return ConfigField::None;
+    case ModemField::Preset:
+      return ConfigField::Preset;
+    case ModemField::Frequency:
+      return ConfigField::Frequency;
+    case ModemField::Bandwidth:
+      return ConfigField::Bandwidth;
+    case ModemField::SpreadFactor:
+      return ConfigField::SpreadFactor;
+    case ModemField::CodingRate:
+      return ConfigField::CodingRate;
+    case ModemField::HopLimit:
+      return ConfigField::HopLimit;
+  }
+  return ConfigField::Preset;
+}
+
 }  // namespace
 
 bool validCallsign(const char* callsign) {
@@ -99,9 +119,10 @@ ConfigField validateConfig(const Config& config) {
   if (static_cast<uint8_t>(config.region) >= static_cast<uint8_t>(RegionCode::Count)) {
     return ConfigField::Region;
   }
-  if (static_cast<uint8_t>(config.preset) >=
-      static_cast<uint8_t>(ModemPresetCode::Count)) {
-    return ConfigField::Preset;
+  const ConfigField modemField =
+      configFieldForModem(validateModemConfig(config.modem, config.region));
+  if (modemField != ConfigField::None) {
+    return modemField;
   }
   if (config.maxPerMinute == 0 || config.maxPerMinute > kConfigMaxPerMinute) {
     return ConfigField::RateLimit;
@@ -128,6 +149,16 @@ const char* configFieldText(ConfigField field) {
       return "region";
     case ConfigField::Preset:
       return "preset";
+    case ConfigField::Frequency:
+      return "frecuencia";
+    case ConfigField::Bandwidth:
+      return "ancho de banda";
+    case ConfigField::SpreadFactor:
+      return "factor de dispersión";
+    case ConfigField::CodingRate:
+      return "tasa de codificación";
+    case ConfigField::HopLimit:
+      return "saltos";
     case ConfigField::RateLimit:
       return "rate limit";
     case ConfigField::MinInterval:

@@ -9,7 +9,9 @@ namespace {
 constexpr char kNamespace[] = "aprs2mesh";
 constexpr char kKey[] = "config";
 constexpr uint32_t kMagic = 0x41324D31u;  // "A2M1"
-constexpr uint16_t kFormatVersion = 1;
+// Version 2 adds the modem block (CUSTOM frequency/BW/SF/CR) and hop limit.
+// No migration is needed: no device has been flashed with version 1 yet.
+constexpr uint16_t kFormatVersion = 2;
 
 struct Blob {
   uint32_t magic;
