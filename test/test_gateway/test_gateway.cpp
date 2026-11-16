@@ -267,11 +267,11 @@ static void test_full_cycle_with_session_and_fake_server() {
 
 static void test_identity_and_node_info_packet() {
   GatewayIdentity identity;
-  TEST_ASSERT_TRUE(buildGatewayIdentity("EA1ABC-10", kNode, identity));
+  TEST_ASSERT_TRUE(buildGatewayIdentity("EA1ABC-10", kNode, 5, identity));
   TEST_ASSERT_EQUAL_STRING("EA1ABC-10", identity.longName);
   TEST_ASSERT_EQUAL_STRING("EA1A", identity.shortName);
   TEST_ASSERT_EQUAL_UINT8(1, identity.role);
-  TEST_ASSERT_EQUAL_UINT8(3, identity.hopLimit);
+  TEST_ASSERT_EQUAL_UINT8(5, identity.hopLimit);
 
   NodeInfoScheduler scheduler;
   scheduler.configure(identity, 0);
@@ -285,6 +285,7 @@ static void test_identity_and_node_info_packet() {
   TEST_ASSERT_TRUE(decodeMeshPacket(packet, length, info));
   TEST_ASSERT_EQUAL_UINT32(kNode, info.from);
   TEST_ASSERT_EQUAL_UINT32(kBroadcastAddress, info.to);
+  TEST_ASSERT_EQUAL_UINT32(5, info.hopLimit);
   TEST_ASSERT_EQUAL_UINT32(kPortNodeInfo, info.data.portnum);
   TEST_ASSERT_TRUE(info.data.payloadLength > 0);
 

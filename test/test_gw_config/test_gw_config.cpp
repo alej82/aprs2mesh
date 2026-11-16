@@ -20,6 +20,17 @@ GatewayConfig validConfig() {
   return config;
 }
 
+GatewayConfig customConfig() {
+  GatewayConfig config = validConfig();
+  config.modem.preset = ModemPresetCode::Custom;
+  config.modem.frequencyHz = 869525000u;
+  config.modem.bandwidth = BandwidthCode::Bw62_5;
+  config.modem.spreadFactor = 7;
+  config.modem.codingRate = CodingRateCode::Cr4_5;
+  config.modem.hopLimit = 3;
+  return config;
+}
+
 GwField validate(const GatewayConfig& config) { return validateGatewayConfig(config); }
 
 }  // namespace
@@ -32,6 +43,9 @@ static void test_defaults_wait_for_portal() {
   TEST_ASSERT_EQUAL_STRING("rotate.aprs2.net", config.host);
   TEST_ASSERT_EQUAL_STRING("m/50", config.filter);
   TEST_ASSERT_EQUAL_UINT16(14580, config.port);
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ModemPresetCode::LongFast),
+                          static_cast<uint8_t>(config.modem.preset));
+  TEST_ASSERT_EQUAL_UINT8(kModemDefaultHopLimit, config.modem.hopLimit);
 }
 
 static void test_complete_config_is_valid() {
@@ -156,8 +170,50 @@ static void test_wifi_and_channel_fields() {
   TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(GwField::Region),
                           static_cast<uint8_t>(validate(config)));
   config.region = RegionCode::Eu868;
-  config.preset = ModemPresetCode::Count;
+  config.modem.preset = ModemPresetCode::Count;
   TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(GwField::Preset),
+                          static_cast<uint8_t>(validate(config)));
+}
+
+static void test_custom_modem_is_valid() {
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(GwField::None),
+                          static_cast<uint8_t>(validate(customConfig())));
+}
+
+static void test_custom_modem_field_errors() {
+  GatewayConfig config = customConfig();
+  config.modem.frequencyHz = 869400000u;
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(GwField::Frequency),
+                          static_cast<uint8_t>(validate(config)));
+
+  config = customConfig();
+  config.modem.bandwidth = BandwidthCode::Bw500;
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(GwField::Bandwidth),
+                          static_cast<uint8_t>(validate(config)));
+
+  config = customConfig();
+  config.modem.spreadFactor = 6;
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(GwField::SpreadFactor),
+                          static_cast<uint8_t>(validate(config)));
+
+  config = customConfig();
+  config.modem.codingRate = CodingRateCode::Count;
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(GwField::CodingRate),
+                          static_cast<uint8_t>(validate(config)));
+
+  config = customConfig();
+  config.modem.hopLimit = 8;
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(GwField::HopLimit),
+                          static_cast<uint8_t>(validate(config)));
+}
+
+static void test_fixed_preset_ignores_custom_fields() {
+  GatewayConfig config = validConfig();
+  config.modem.frequencyHz = 1;
+  config.modem.bandwidth = BandwidthCode::Count;
+  config.modem.spreadFactor = 0;
+  config.modem.codingRate = CodingRateCode::Count;
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(GwField::None),
                           static_cast<uint8_t>(validate(config)));
 }
 
@@ -177,6 +233,9 @@ int main(int, char**) {
   RUN_TEST(test_filter_rejects_line_breaks_and_length);
   RUN_TEST(test_policy_numbers);
   RUN_TEST(test_wifi_and_channel_fields);
+  RUN_TEST(test_custom_modem_is_valid);
+  RUN_TEST(test_custom_modem_field_errors);
+  RUN_TEST(test_fixed_preset_ignores_custom_fields);
   RUN_TEST(test_field_text_is_stable);
   return UNITY_END();
 }

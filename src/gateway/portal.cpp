@@ -2,6 +2,7 @@
 
 #include <WiFi.h>
 
+#include <cstdio>
 #include <cstring>
 
 #include "psk_base64.h"
@@ -68,6 +69,97 @@ bool parseNumber(const String& text, long& value) {
   return true;
 }
 
+// Frequencies are entered with 1 kHz resolution (three decimals) and stored in
+// Hz, matching the tracker portal.
+bool parseFrequencyMHz(const String& text, uint32_t& frequencyHz) {
+  if (text.length() == 0) {
+    return false;
+  }
+
+  long whole = 0;
+  long fraction = 0;
+  size_t fractionDigits = 0;
+  bool dot = false;
+  for (size_t i = 0; i < text.length(); ++i) {
+    const char c = text[i];
+    if (c == '.') {
+      if (dot) {
+        return false;
+      }
+      dot = true;
+      continue;
+    }
+    if (c < '0' || c > '9') {
+      return false;
+    }
+    if (!dot) {
+      whole = whole * 10 + static_cast<long>(c - '0');
+      if (whole > 1000) {
+        return false;
+      }
+    } else {
+      if (fractionDigits >= 3) {
+        return false;
+      }
+      fraction = fraction * 10 + static_cast<long>(c - '0');
+      ++fractionDigits;
+    }
+  }
+
+  while (fractionDigits < 3) {
+    fraction *= 10;
+    ++fractionDigits;
+  }
+
+  const uint32_t hz = static_cast<uint32_t>(whole) * 1000000u +
+                      static_cast<uint32_t>(fraction) * 1000u;
+  if (hz == 0) {
+    return false;
+  }
+  frequencyHz = hz;
+  return true;
+}
+
+String frequencyText(uint32_t frequencyHz) {
+  char buffer[16] = {};
+  std::snprintf(buffer, sizeof(buffer), "%lu.%03lu",
+                static_cast<unsigned long>(frequencyHz / 1000000u),
+                static_cast<unsigned long>((frequencyHz / 1000u) % 1000u));
+  return String(buffer);
+}
+
+ModemConfig customDisplayConfig(const GatewayConfig& active) {
+  ModemConfig modem = active.modem;
+  if (modem.frequencyHz == 0) {
+    ModemParams effective;
+    if (resolveModem(active.modem, active.region, active.channelName, effective)) {
+      modem.frequencyHz = effective.frequencyHz;
+    }
+    modem.bandwidth = BandwidthCode::Bw62_5;
+    modem.spreadFactor = 7;
+    modem.codingRate = CodingRateCode::Cr4_5;
+  }
+  return modem;
+}
+
+String modemFingerprint(const GatewayConfig& active) {
+  ModemParams params;
+  if (!resolveModem(active.modem, active.region, active.channelName, params)) {
+    return String(F("—"));
+  }
+
+  String out = frequencyText(params.frequencyHz);
+  out += F(" MHz · BW ");
+  out += bandwidthName(params.bandwidth);
+  out += F(" kHz · SF ");
+  out += String(static_cast<unsigned>(params.spreadFactor));
+  out += F(" · CR ");
+  out += codingRateName(params.codingRateCode);
+  out += F(" · saltos ");
+  out += String(static_cast<unsigned>(params.hopLimit));
+  return out;
+}
+
 const char* regionName(RegionCode region) {
   switch (region) {
     case RegionCode::Eu868:
@@ -75,20 +167,6 @@ const char* regionName(RegionCode region) {
     case RegionCode::Us915:
       return "US915";
     case RegionCode::Count:
-      break;
-  }
-  return "?";
-}
-
-const char* presetName(ModemPresetCode preset) {
-  switch (preset) {
-    case ModemPresetCode::LongFast:
-      return "LONG_FAST";
-    case ModemPresetCode::MediumFast:
-      return "MEDIUM_FAST";
-    case ModemPresetCode::ShortFast:
-      return "SHORT_FAST";
-    case ModemPresetCode::Count:
       break;
   }
   return "?";
@@ -261,7 +339,42 @@ void GatewayPortal::handleSave() {
     fail(F("Preset inválido"));
     return;
   }
-  next.preset = static_cast<ModemPresetCode>(static_cast<uint8_t>(number));
+  next.modem.preset = static_cast<ModemPresetCode>(static_cast<uint8_t>(number));
+
+  if (!parseNumber(server_.arg("hopLimit"), number) || number < 0 ||
+      number > 255) {
+    fail(F("Número de saltos inválido"));
+    return;
+  }
+  next.modem.hopLimit = static_cast<uint8_t>(number);
+
+  // Fixed presets preserve the last custom values, exactly like the tracker.
+  if (next.modem.preset == ModemPresetCode::Custom) {
+    if (!parseFrequencyMHz(server_.arg("frequencyMHz"), next.modem.frequencyHz)) {
+      fail(F("Frecuencia inválida"));
+      return;
+    }
+    if (!parseNumber(server_.arg("bandwidth"), number) || number < 0 ||
+        number > 255) {
+      fail(F("Ancho de banda inválido"));
+      return;
+    }
+    next.modem.bandwidth =
+        static_cast<BandwidthCode>(static_cast<uint8_t>(number));
+    if (!parseNumber(server_.arg("spreadFactor"), number) || number < 0 ||
+        number > 255) {
+      fail(F("Factor de dispersión inválido"));
+      return;
+    }
+    next.modem.spreadFactor = static_cast<uint8_t>(number);
+    if (!parseNumber(server_.arg("codingRate"), number) || number < 0 ||
+        number > 255) {
+      fail(F("Tasa de codificación inválida"));
+      return;
+    }
+    next.modem.codingRate =
+        static_cast<CodingRateCode>(static_cast<uint8_t>(number));
+  }
 
   std::memset(next.psk, 0, sizeof(next.psk));
   size_t pskLength = 0;
@@ -310,7 +423,7 @@ void GatewayPortal::sendPage() {
   gateway_.pruneFlows(nowMs);
 
   String page;
-  page.reserve(10000);
+  page.reserve(14000);
 
   page += F(
       "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"utf-8\">"
@@ -325,6 +438,8 @@ void GatewayPortal::sendPage() {
       "button{margin-top:16px;width:100%;padding:10px;background:#2e7d32;"
       "color:#fff;border:0;border-radius:6px;font-size:1rem}"
       ".danger{background:#9c2b2b}"
+      ".secondary{background:#455a64}"
+      ".warn{color:#e0a030}"
       "table{width:100%;border-collapse:collapse;font-size:.9rem}"
       "td{padding:4px 0;border-bottom:1px solid #262626}"
       "td:first-child{color:#aaa}"
@@ -353,6 +468,23 @@ void GatewayPortal::sendPage() {
     encodeBase64(active_.psk, active_.pskLength, pskText, sizeof(pskText));
   }
 
+  const ModemConfig custom = customDisplayConfig(active_);
+  ModemParams effective;
+  const bool effectiveOk =
+      resolveModem(active_.modem, active_.region, active_.channelName, effective);
+  RegionBand band;
+  const bool bandOk = regionBand(active_.region, band);
+  uint32_t effectiveAirtime = 0;
+  uint16_t suggestedRate = 0;
+  if (effectiveOk) {
+    effectiveAirtime =
+        estimateAirtimeMs(effective, kModemAirtimePayloadBytes);
+    if (bandOk) {
+      suggestedRate = suggestedMaxPerMinute(
+          effective, band.dutyCyclePercent, kModemAirtimePayloadBytes);
+    }
+  }
+
   page += F("<h2>Configuración</h2><form method=\"post\" action=\"/save\">");
 
   appendText(page, "Callsign del gateway", "callsign", active_.callsign,
@@ -369,8 +501,11 @@ void GatewayPortal::sendPage() {
   appendNumber(page, "Máximo de flujos", "maxFlows", active_.maxFlows, 1, kGwMaxFlows);
   appendNumber(page, "Subidas por minuto", "uplinkPerMinute",
                active_.uplinkPerMinute, 1, kGwMaxPerMinute);
-  appendNumber(page, "Bajadas por minuto", "downlinkPerMinute",
-               active_.downlinkPerMinute, 1, kGwMaxPerMinute);
+  page += F("<label>Bajadas por minuto (1-60)</label>"
+            "<input id=\"downlinkPerMinute\" type=\"number\" "
+            "name=\"downlinkPerMinute\" min=\"1\" max=\"60\" value=\"");
+  page += static_cast<unsigned>(active_.downlinkPerMinute);
+  page += F("\" oninput=\"updateAirtime()\">");
   appendNumber(page, "Intervalo mínimo de bajada (ms)", "minIntervalMs",
                active_.minIntervalMs, 0, kGwMaxIntervalMs);
 
@@ -393,7 +528,8 @@ void GatewayPortal::sendPage() {
   page += htmlEscape(pskText);
   page += F("\">");
 
-  page += F("<label>Región</label><select name=\"region\">");
+  page += F("<label>Región</label><select id=\"region\" name=\"region\" "
+            "onchange=\"updateAirtime()\">");
   for (uint8_t i = 0; i < static_cast<uint8_t>(RegionCode::Count); ++i) {
     page += F("<option value=\"");
     page += static_cast<unsigned>(i);
@@ -407,21 +543,189 @@ void GatewayPortal::sendPage() {
   }
   page += F("</select>");
 
-  page += F("<label>Preset de módem</label><select name=\"preset\">");
+  page += F("<label>Preset de módem</label><select id=\"preset\" name=\"preset\" "
+            "onchange=\"updateCustom()\">");
   for (uint8_t i = 0; i < static_cast<uint8_t>(ModemPresetCode::Count); ++i) {
     page += F("<option value=\"");
     page += static_cast<unsigned>(i);
     page += F("\"");
-    if (static_cast<uint8_t>(active_.preset) == i) {
+    if (static_cast<uint8_t>(active_.modem.preset) == i) {
       page += F(" selected");
     }
     page += F(">");
-    page += presetName(static_cast<ModemPresetCode>(i));
+    page += modemPresetName(static_cast<ModemPresetCode>(i));
     page += F("</option>");
   }
   page += F("</select>");
 
+  page += F("<div id=\"customModem\"><div class=\"hint\">"
+            "Sólo se aplica con preset CUSTOM. Debe coincidir con el tracker.</div>");
+
+  page += F("<label>Frecuencia (MHz, precisión 1 kHz)</label>"
+            "<input id=\"frequencyMHz\" name=\"frequencyMHz\" type=\"number\" "
+            "step=\"0.001\" min=\"0\" max=\"1000\" value=\"");
+  page += frequencyText(custom.frequencyHz);
+  page += F("\" oninput=\"updateAirtime()\">");
+
+  page += F("<label>Ancho de banda (kHz)</label>"
+            "<select id=\"bandwidth\" name=\"bandwidth\" "
+            "onchange=\"updateAirtime()\">");
+  for (uint8_t i = 0; i < static_cast<uint8_t>(BandwidthCode::Count); ++i) {
+    page += F("<option value=\"");
+    page += static_cast<unsigned>(i);
+    page += F("\"");
+    if (static_cast<uint8_t>(custom.bandwidth) == i) {
+      page += F(" selected");
+    }
+    page += F(">");
+    page += bandwidthName(static_cast<BandwidthCode>(i));
+    page += F("</option>");
+  }
+  page += F("</select>");
+
+  page += F("<label>Factor de dispersión</label>"
+            "<select id=\"spreadFactor\" name=\"spreadFactor\" "
+            "onchange=\"updateAirtime()\">");
+  for (uint8_t sf = kModemMinSpreadFactor; sf <= kModemMaxSpreadFactor; ++sf) {
+    page += F("<option value=\"");
+    page += static_cast<unsigned>(sf);
+    page += F("\"");
+    if (custom.spreadFactor == sf) {
+      page += F(" selected");
+    }
+    page += F(">SF ");
+    page += static_cast<unsigned>(sf);
+    page += F("</option>");
+  }
+  page += F("</select>");
+
+  page += F("<label>Tasa de codificación</label>"
+            "<select id=\"codingRate\" name=\"codingRate\" "
+            "onchange=\"updateAirtime()\">");
+  for (uint8_t i = 0; i < static_cast<uint8_t>(CodingRateCode::Count); ++i) {
+    page += F("<option value=\"");
+    page += static_cast<unsigned>(i);
+    page += F("\"");
+    if (static_cast<uint8_t>(custom.codingRate) == i) {
+      page += F(" selected");
+    }
+    page += F(">");
+    page += codingRateName(static_cast<CodingRateCode>(i));
+    page += F("</option>");
+  }
+  page += F("</select></div>");
+
+  page += F("<label>Número de saltos (0-7)</label>"
+            "<input type=\"number\" name=\"hopLimit\" min=\"0\" max=\"7\" value=\"");
+  page += static_cast<unsigned>(active_.modem.hopLimit);
+  page += F("\">");
+
+  page += F("<div class=\"hint\" id=\"airtimeHint\">");
+  if (effectiveOk) {
+    char airtimeText[16] = {};
+    std::snprintf(airtimeText, sizeof(airtimeText), "%.2f",
+                  static_cast<double>(effectiveAirtime) / 1000.0);
+    page += F("Aire estimado: ~");
+    page += airtimeText;
+    page += F(" s por trama");
+    if (suggestedRate > 0) {
+      page += F(" · sugerido para bajadas: ");
+      page += static_cast<unsigned>(suggestedRate);
+      page += F("/min");
+    } else {
+      page += F(" · menos de 1/min sostenible");
+    }
+  } else {
+    page += F("Aire estimado: —");
+  }
+  page += F("</div>");
+  page += F("<button type=\"button\" id=\"applySuggestion\" class=\"secondary\" "
+            "style=\"display:none;width:auto;margin-top:8px\" "
+            "onclick=\"applySuggestion()\">Aplicar el límite sugerido</button>");
+
   page += F("<button type=\"submit\">Guardar y reiniciar</button></form>");
+
+  page += F("<script>"
+            "const kCustomPreset=");
+  page += static_cast<unsigned>(ModemPresetCode::Custom);
+  page += F(";const kRegionDuty=[");
+  for (uint8_t i = 0; i < static_cast<uint8_t>(RegionCode::Count); ++i) {
+    RegionBand jsBand;
+    page += regionBand(static_cast<RegionCode>(i), jsBand)
+                ? static_cast<unsigned>(jsBand.dutyCyclePercent)
+                : 100u;
+    if (i + 1 < static_cast<uint8_t>(RegionCode::Count)) {
+      page += F(",");
+    }
+  }
+  page += F("];const kPresetModem=[");
+  for (uint8_t i = 0; i < static_cast<uint8_t>(ModemPresetCode::Custom); ++i) {
+    BandwidthCode jsBandwidth = BandwidthCode::Bw250;
+    uint8_t jsSpreadFactor = 11;
+    CodingRateCode jsCodingRate = CodingRateCode::Cr4_5;
+    if (presetParams(static_cast<ModemPresetCode>(i), jsBandwidth,
+                     jsSpreadFactor, jsCodingRate)) {
+      page += F("[");
+      page += static_cast<unsigned long>(bandwidthHz(jsBandwidth));
+      page += F(",");
+      page += static_cast<unsigned>(jsSpreadFactor);
+      page += F(",");
+      page += static_cast<unsigned>(static_cast<uint8_t>(jsCodingRate) +
+                                    kModemMinCodingRate);
+      page += F("]");
+    }
+    if (i + 1 < static_cast<uint8_t>(ModemPresetCode::Custom)) {
+      page += F(",");
+    }
+  }
+  page += F("];const kBw=[");
+  for (uint8_t i = 0; i < static_cast<uint8_t>(BandwidthCode::Count); ++i) {
+    page += static_cast<unsigned long>(
+        bandwidthHz(static_cast<BandwidthCode>(i)));
+    if (i + 1 < static_cast<uint8_t>(BandwidthCode::Count)) {
+      page += F(",");
+    }
+  }
+  page += F("];"
+            "function currentModem(){"
+            "const p=Number(document.getElementById('preset').value);"
+            "if(p===kCustomPreset){return ["
+            "kBw[Number(document.getElementById('bandwidth').value)],"
+            "Number(document.getElementById('spreadFactor').value),"
+            "Number(document.getElementById('codingRate').value)+5];}"
+            "const m=kPresetModem[p];return m?m:kPresetModem[0];}"
+            "function airtimeMs(bw,sf,cr){"
+            "const symbol=(Math.pow(2,sf)*1000)/bw;"
+            "const low=symbol>16?1:0;"
+            "const num=8*200-4*sf+28+16;"
+            "const den=4*(sf-2*low);"
+            "const syms=8+Math.ceil(num/den)*cr;"
+            "return (16+4.25)*symbol+syms*symbol;}"
+            "function updateCustom(){"
+            "const isCustom=Number(document.getElementById('preset').value)===kCustomPreset;"
+            "document.getElementById('customModem').style.display=isCustom?'block':'none';"
+            "updateAirtime();}"
+            "function applySuggestion(){"
+            "const s=Number(document.getElementById('applySuggestion').dataset.suggested||'0');"
+            "if(s>0){document.getElementById('downlinkPerMinute').value=String(s);updateAirtime();}}"
+            "function updateAirtime(){"
+            "const m=currentModem();"
+            "const t=airtimeMs(m[0],m[1],m[2]);"
+            "const duty=kRegionDuty[Number(document.getElementById('region').value)]||100;"
+            "const suggested=Math.floor((duty*60000)/(100*t));"
+            "const hint=document.getElementById('airtimeHint');"
+            "const button=document.getElementById('applySuggestion');"
+            "let text='Aire estimado: ~'+(t/1000).toFixed(2)+' s por trama';"
+            "if(suggested>0){text+=' · sugerido para bajadas: '+suggested+'/min';}"
+            "else{text+=' · menos de 1/min sostenible';}"
+            "const current=Number(document.getElementById('downlinkPerMinute').value||'0');"
+            "if(suggested>0&&current>suggested){text+=' · tu límite actual es más alto';}"
+            "hint.textContent=text;"
+            "if(suggested>0&&current>suggested){"
+            "button.style.display='block';button.dataset.suggested=String(suggested);"
+            "}else{button.style.display='none';button.dataset.suggested='0';}}"
+            "updateCustom();updateAirtime();"
+            "</script>");
 
   page += F("<h2>Gate</h2><p>Estado actual: ");
   page += gateway_.gateOpen() ? F("abierto") : F("cerrado");
@@ -439,6 +743,10 @@ void GatewayPortal::sendPage() {
   if (runtime_.note[0] != '\0') {
     appendRow(page, "Aviso", runtime_.note);
   }
+  appendRow(page, "Región / preset",
+            String(regionName(active_.region)) + " / " +
+                modemPresetName(active_.modem.preset));
+  appendRow(page, "Módem", modemFingerprint(active_));
   appendRow(page, "Sesión APRS-IS",
             String(sessionStateText(session_.state())) + " — " +
                 session_.lastError());

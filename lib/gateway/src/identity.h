@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "mesh_proto.h"
+#include "modem.h"
 
 namespace aprs2mesh {
 
@@ -24,7 +25,7 @@ struct GatewayIdentity {
 // long_name is the gateway callsign; short_name keeps up to four characters of
 // its base. The hardware model is left unset: the radio layer owns it.
 bool buildGatewayIdentity(const char* callsign, uint32_t nodeNumber,
-                          GatewayIdentity& out);
+                          uint8_t hopLimit, GatewayIdentity& out);
 
 // Builds the NodeInfo MeshPacket (Data.portnum = NODEINFO_APP) and schedules a
 // periodic announcement. The radio layer only has to transmit the bytes.

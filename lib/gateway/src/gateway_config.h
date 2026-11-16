@@ -47,6 +47,11 @@ enum class GwField : uint8_t {
   Psk,
   Region,
   Preset,
+  Frequency,
+  Bandwidth,
+  SpreadFactor,
+  CodingRate,
+  HopLimit,
 };
 
 // Everything the gateway needs to reach APRS-IS and to join the mesh channel.
@@ -69,7 +74,7 @@ struct GatewayConfig {
   uint8_t psk[kGwPsk] = {};
   uint8_t pskLength = 0;
   RegionCode region = RegionCode::Eu868;
-  ModemPresetCode preset = ModemPresetCode::LongFast;
+  ModemConfig modem;
 };
 
 // No callsign, so validateGatewayConfig() fails and the device starts in

@@ -30,13 +30,15 @@ namespace {
 
 constexpr uint32_t kStatsIntervalMs = 30000;
 constexpr uint32_t kPortalHoldMs = 3000;
-constexpr uint8_t kPortalButtonPin = 0;  // BOOT button on the T-Beam
+// The T-Beam v1.1 has PWR, IO38 and RST buttons; there is no BOOT button.
+// IO38 is the user button, active low with the internal pull-up.
+constexpr uint8_t kPortalButtonPin = 38;
 constexpr uint32_t kForcePortalMagic = 0x47574D31u;  // "GWM1"
 constexpr char kAccessPointSsid[] = "aprs2mesh-gw";
 constexpr char kAccessPointPassword[] = "aprs2meshgw";
 
-// Same trick as the tracker: GPIO0 is a strapping pin, so the manual portal
-// entry is a long press in run mode plus a flag in RTC memory.
+// Same trick as the tracker: the user button (IO38) is read only in run mode,
+// and a long press leaves a flag in RTC memory for the next boot.
 RTC_NOINIT_ATTR uint32_t gForcePortalFlag;
 
 GatewayConfigStore gStore;
@@ -67,10 +69,13 @@ bool gRebootForPortal = false;
 uint32_t gLastStats = 0;
 uint32_t gPacketId = 1;
 
-// Placeholder for the radio layer: the text is logged and considered sent,
-// which keeps the downlink queue moving before task 3.3 attaches RadioLib.
+// Placeholder for the radio layer: the text is logged with the configured hop
+// limit and considered sent, which keeps the downlink queue moving until task
+// 2.5 attaches RadioLib.
 bool publishToMesh(const char* text, size_t length) {
-  Serial.printf("mesh tx: %.*s\n", static_cast<int>(length), text);
+  Serial.printf("mesh tx (hops %u): %.*s\n",
+                static_cast<unsigned>(gGateway.hopLimit()),
+                static_cast<int>(length), text);
   return true;
 }
 
@@ -128,13 +133,16 @@ void startLink(uint32_t nodeNumber) {
   settings.uplinkPerMinute = gConfig.uplinkPerMinute;
   settings.downlinkPerMinute = gConfig.downlinkPerMinute;
   settings.minIntervalMs = gConfig.minIntervalMs;
+  settings.hopLimit = gConfig.modem.hopLimit;
   gGateway.configure(settings, millis());
 
   GatewayIdentity identity;
-  if (buildGatewayIdentity(gConfig.callsign, nodeNumber, identity)) {
+  if (buildGatewayIdentity(gConfig.callsign, nodeNumber, gConfig.modem.hopLimit,
+                           identity)) {
     gNodeInfo.configure(identity, millis());
-    Serial.printf("identity: %s, short %s, role CLIENT_MUTE, hops 3\n",
-                  identity.longName, identity.shortName);
+    Serial.printf("identity: %s, short %s, role CLIENT_MUTE, hops %u\n",
+                  identity.longName, identity.shortName,
+                  static_cast<unsigned>(identity.hopLimit));
   }
 
   gMonitorServer.begin();
@@ -157,6 +165,7 @@ void updateRuntime() {
       static_cast<uint8_t>(gMonitorServer.clientCount());
   gRuntime.monitorDiscarded = gMonitorServer.discardedBytes();
   gRuntime.monitorDropped = gMonitorServer.droppedClients();
+  gPortal.setRuntime(gRuntime);
 }
 
 void printStats() {
@@ -185,7 +194,9 @@ void setup() {
   gGateway.setNodeNumber(nodeNumber);
   startAccessPoint();
 
-  pinMode(kPortalButtonPin, INPUT_PULLUP);
+  // IO38 is input-only and has no internal pull-up; the T-Beam provides the
+  // external pull-up for its user button.
+  pinMode(kPortalButtonPin, INPUT);
   delay(20);
 
   const bool forcedByRtc = gForcePortalFlag == kForcePortalMagic;

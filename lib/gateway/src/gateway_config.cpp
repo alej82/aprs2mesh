@@ -31,6 +31,26 @@ bool printable(const char* text, size_t capacity, size_t minimum) {
   return true;
 }
 
+GwField gwFieldForModem(ModemField field) {
+  switch (field) {
+    case ModemField::None:
+      return GwField::None;
+    case ModemField::Preset:
+      return GwField::Preset;
+    case ModemField::Frequency:
+      return GwField::Frequency;
+    case ModemField::Bandwidth:
+      return GwField::Bandwidth;
+    case ModemField::SpreadFactor:
+      return GwField::SpreadFactor;
+    case ModemField::CodingRate:
+      return GwField::CodingRate;
+    case ModemField::HopLimit:
+      return GwField::HopLimit;
+  }
+  return GwField::Preset;
+}
+
 }  // namespace
 
 GatewayConfig defaultGatewayConfig() {
@@ -129,9 +149,10 @@ GwField validateGatewayConfig(const GatewayConfig& config) {
   if (static_cast<uint8_t>(config.region) >= static_cast<uint8_t>(RegionCode::Count)) {
     return GwField::Region;
   }
-  if (static_cast<uint8_t>(config.preset) >=
-      static_cast<uint8_t>(ModemPresetCode::Count)) {
-    return GwField::Preset;
+  const GwField modemField =
+      gwFieldForModem(validateModemConfig(config.modem, config.region));
+  if (modemField != GwField::None) {
+    return modemField;
   }
   return GwField::None;
 }
@@ -172,6 +193,16 @@ const char* gwFieldText(GwField field) {
       return "región";
     case GwField::Preset:
       return "preset";
+    case GwField::Frequency:
+      return "frecuencia";
+    case GwField::Bandwidth:
+      return "ancho de banda";
+    case GwField::SpreadFactor:
+      return "factor de dispersión";
+    case GwField::CodingRate:
+      return "tasa de codificación";
+    case GwField::HopLimit:
+      return "saltos";
   }
   return "?";
 }

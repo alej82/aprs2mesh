@@ -6,7 +6,7 @@
 namespace aprs2mesh {
 
 bool buildGatewayIdentity(const char* callsign, uint32_t nodeNumber,
-                          GatewayIdentity& out) {
+                          uint8_t hopLimit, GatewayIdentity& out) {
   if (callsign == nullptr || callsign[0] == '\0') {
     return false;
   }
@@ -27,7 +27,8 @@ bool buildGatewayIdentity(const char* callsign, uint32_t nodeNumber,
   identity.shortName[baseLength] = '\0';
   identity.nodeNumber = nodeNumber;
   identity.role = kGatewayRoleClientMute;
-  identity.hopLimit = kGatewayHopLimit;
+  identity.hopLimit =
+      hopLimit <= kModemMaxHopLimit ? hopLimit : kModemMaxHopLimit;
 
   out = identity;
   return true;

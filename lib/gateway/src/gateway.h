@@ -21,6 +21,7 @@ struct GatewaySettings {
   uint16_t uplinkPerMinute = 6;
   uint16_t downlinkPerMinute = 6;
   uint32_t minIntervalMs = 10000;
+  uint8_t hopLimit = kModemDefaultHopLimit;
 };
 
 // Three groups on purpose: what the mesh offered, what the pinhole admitted and
@@ -62,6 +63,7 @@ class Gateway {
   void configure(const GatewaySettings& settings, uint32_t nowMs);
   void setGateOpen(bool open) { settings_.gateOpen = open; }
   bool gateOpen() const { return settings_.gateOpen; }
+  uint8_t hopLimit() const { return settings_.hopLimit; }
 
   // Mesh reception, already deduplicated by (from, id). Returns true when the
   // frame entered the uplink buffer.
