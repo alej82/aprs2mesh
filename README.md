@@ -31,8 +31,8 @@ The plan lives in `openspec/changes/add-kiss-mesh-gateway/` (tracker) and
 | Configuration portal (AP + web form + status) | implemented, compiles for T-Beam, not run on hardware |
 | APRS-IS session (login, keepalive, backoff, verified/unverified) | implemented, host-tested, not run on hardware |
 | Gateway pipeline (`qAR` injection, pinhole flows, `TCPIP*` rewrite, dedupe and rates) | implemented, host-tested |
-| Read-only KISS monitor (`:8002`) | implemented, compiles for T-Beam, not run on hardware |
-| Gateway config, AP+STA portal and hot gate switch | implemented, compiles for T-Beam, not run on hardware |
+| Read-only KISS monitor (`:8002`) | implemented, server starts on hardware, clients not exercised |
+| Gateway config, AP+STA portal and hot gate switch | implemented, portal and persisted configuration verified on hardware; APRS-IS/monitor traffic pending |
 
 Nothing is claimed as working on the board until it has been run on the board.
 
@@ -95,8 +95,8 @@ before handing the board over.
    run mode.
 3. The AP stays up for the status page, which shows mode, connected KISS
    clients, bridge counters, airtime queue, free heap and the last error.
-   Hold the BOOT button for three seconds while running, then release it, to
-   reboot into portal mode again.
+   Hold the user button (IO38) for three seconds while running, then release
+   it, to reboot into portal mode again.
 4. Point Direwolf (or `kissutil`) at `TCP:8001` and send an APRS frame.
 5. The serial log prints `kiss rx: <TNC2>`, for example:
 
